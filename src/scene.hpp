@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include "wheels/geometry.hpp"
+
 namespace wheels {
 
 }
