@@ -52,13 +52,13 @@ endif ()
 
 # lib
 add_library(${PROJECT_NAME} ${sources})
-add_dependencies(${PROJECT_NAME} wheels.math)
+add_dependencies(${PROJECT_NAME} wheels.vision)
 target_link_libraries(${PROJECT_NAME} ${Qt_LIBS})
 target_include_directories(${PROJECT_NAME} 
     PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include 
-        ${wheels.geometry_INCLUDE_DIRS} ${Qt_INCLUDES}> 
-    $<INSTALL_INTERFACE:include ${wheels.geometry_INCLUDE_DIRS} ${Qt_INCLUDES}>
+        ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}> 
+    $<INSTALL_INTERFACE:include ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}>
     PRIVATE 
     src)
 
@@ -66,9 +66,9 @@ target_include_directories(${PROJECT_NAME}
 # subprojects through cache variable.
 set(${PROJECT_NAME}_INCLUDE_DIRS 
     ${PROJECT_SOURCE_DIR}/include 
-    ${wheels.geometry_INCLUDE_DIRS} ${Qt_INCLUDES}
+    ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}
     CACHE EXTERNAL "${PROJECT_NAME}: Include Directories" FORCE)
-set(${PROJECT_NAME}_LIBS ${wheels.geometry_LIBS} ${Qt_LIBS}
+set(${PROJECT_NAME}_LIBS ${wheels.vision_LIBS} ${Qt_LIBS}
     CACHE EXTERNAL "${PROJECT_NAME}: Link Libraries" FORCE)
 
 install(TARGETS ${PROJECT_NAME}
@@ -88,8 +88,8 @@ target_link_libraries(${PROJECT_NAME}.test ${PROJECT_NAME} ${Qt_LIBS})
 target_include_directories(${PROJECT_NAME}.test
     PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include 
-        ${wheels.geometry_INCLUDE_DIRS} ${Qt_INCLUDES} ${Catch_INCLUDE_DIRS}>
+        ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES} ${Catch_INCLUDE_DIRS}>
     $<INSTALL_INTERFACE:include 
-        ${wheels.geometry_INCLUDE_DIRS} ${Qt_INCLUDES} ${Catch_INCLUDE_DIRS}>
+        ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES} ${Catch_INCLUDE_DIRS}>
     PRIVATE
     src)

@@ -24,25 +24,20 @@
 
 #pragma once
 
-#include "wheels/geometry.hpp"
+#include "qt.hpp"
 
 namespace wheels {
-class scene_object_base {
+namespace opengl {
+class shader {
 public:
-  virtual void paint() const = 0;
+  enum class type : GLenum {
+    vertex = GL_VERTEX_SHADER,
+    tess_control = GL_TESS_CONTROL_SHADER,
+    tess_evaluation = GL_TESS_EVALUATION_SHADER,
+    geometry = GL_GEOMETRY_SHADER,
+    fragment = GL_FRAGMENT_SHADER,
+    compute = GL_COMPUTE_SHADER
+  };
 };
-
-template <class T> class scene_object : public scene_object_base {
-  //
-};
-
-class scene {
-public:
-  
-public:
-  void paint() const;
-
-private:
-  std::vector<std::shared_ptr<scene_object_base>> _objects;
-};
+}
 }
