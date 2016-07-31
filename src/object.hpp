@@ -24,12 +24,19 @@
 
 #pragma once
 
-#include "qt.hpp"
+#include <QtOpenGL>
 
 namespace wheels {
+class qt_opengl_manager;
 namespace opengl {
-  class object {
+using glfunctions = QOpenGLFunctions;
+class object {
+public:
+  explicit object(glfunctions *f) : glfun(f) {}
 
-  };
+protected:
+  glfunctions *glfun;
+  friend class qt_opengl_manager;
+};
 }
 }

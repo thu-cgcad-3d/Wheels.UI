@@ -24,12 +24,34 @@
 
 #pragma once
 
-#include <QtCore>
 #include <QtOpenGL>
-#include <QtWidgets>
 
 #include "wheels/vision.hpp"
 
-namespace wheels {
+#include "shader.hpp"
+#include "program.hpp"
 
+namespace wheels {
+// qt_opengl_manager
+class qt_opengl_manager {
+public:
+  qt_opengl_manager();
+  explicit qt_opengl_manager(QOpenGLContext *context);
+  ~qt_opengl_manager();
+
+public:
+  void initialize_opengl() const;
+
+  // create_shader
+  std::unique_ptr<opengl::shader> create_shader(opengl::shader::type t,
+                                                const char *src) const;
+  // create_program
+  std::unique_ptr<opengl::program>
+  create_program(const std::vector<opengl::shader *> &shaders) const;
+
+  // 
+
+protected:
+  opengl::glfunctions *glfun;
+};
 }

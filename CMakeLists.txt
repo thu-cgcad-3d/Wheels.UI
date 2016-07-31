@@ -1,24 +1,5 @@
 # ui
-get_filename_component(folder ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-project (wheels.${folder} VERSION 0.1 LANGUAGES CXX)
-
-set (sources "")
-set (test_sources "")
-
-file (GLOB sources 
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp" 
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
-)
-file (GLOB test_sources
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.test.cpp" 
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.test.hpp"
-)
-
-if(test_sources)
-    list (REMOVE_ITEM sources ${test_sources})
-endif()
-source_group ("src" FILES ${sources})
-source_group ("src" FILES ${test_sources})
+project (wheels.ui VERSION 0.1 LANGUAGES CXX)
 
 # add_qt
 set (Qt_DIR "" CACHE PATH "Qt root directory here")
@@ -43,24 +24,22 @@ if (MSVC)
         "do not forget to add QT_QPA_PLATFORM_PLUGIN_PATH=${Qt_DIR}/plugins/platforms to env")
 endif ()
 
-if (MSVC)
-    add_definitions("/DNOMINMAX /wd4503")
-    add_definitions("/Dwheels_data_dir_str=\"${CMAKE_CURRENT_SOURCE_DIR}/data/\"")
-else ()
-    add_definitions("-Dwheels_data_dir_str=\"${CMAKE_CURRENT_SOURCE_DIR}/data/\"")
-endif ()
 
-# lib
-add_library(${PROJECT_NAME} ${sources})
+AddWheelsProject(ui)
+
 add_dependencies(${PROJECT_NAME} wheels.vision)
 target_link_libraries(${PROJECT_NAME} ${Qt_LIBS})
 target_include_directories(${PROJECT_NAME} 
     PUBLIC 
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include 
-        ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}> 
-    $<INSTALL_INTERFACE:include ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}>
-    PRIVATE 
-    src)
+    $<BUILD_INTERFACE:  ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}> 
+    $<INSTALL_INTERFACE:${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}>
+    PRIVATE)
+target_link_libraries(${PROJECT_NAME}.test ${Qt_LIBS})
+target_include_directories(${PROJECT_NAME}.test
+    PUBLIC
+    $<BUILD_INTERFACE:  ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}>
+    $<INSTALL_INTERFACE:${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}>
+    PRIVATE)
 
 # Expose public includes to other
 # subprojects through cache variable.
@@ -68,28 +47,5 @@ set(${PROJECT_NAME}_INCLUDE_DIRS
     ${PROJECT_SOURCE_DIR}/include 
     ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}
     CACHE EXTERNAL "${PROJECT_NAME}: Include Directories" FORCE)
-set(${PROJECT_NAME}_LIBS ${wheels.vision_LIBS} ${Qt_LIBS}
+set(${PROJECT_NAME}_LIBS wheels.ui.lib ${wheels.vision_LIBS} ${Qt_LIBS}
     CACHE EXTERNAL "${PROJECT_NAME}: Link Libraries" FORCE)
-
-install(TARGETS ${PROJECT_NAME}
-    ARCHIVE  DESTINATION lib
-    LIBRARY  DESTINATION lib
-    RUNTIME  DESTINATION bin)  # This is for Windows
-install(DIRECTORY include/ DESTINATION modules/${folder}/include)
-install(DIRECTORY src/ DESTINATION modules/${folder}/src
-    PATTERN "*.test.*" EXCLUDE
-    PATTERN "*.cpp" EXCLUDE)
-install(DIRECTORY data/ DESTINATION modules/${folder}/data)
-
-# test
-add_executable(${PROJECT_NAME}.test ${test_sources})
-add_dependencies(${PROJECT_NAME}.test ${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME}.test ${PROJECT_NAME} ${Qt_LIBS})
-target_include_directories(${PROJECT_NAME}.test
-    PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include 
-        ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES} ${Catch_INCLUDE_DIRS}>
-    $<INSTALL_INTERFACE:include 
-        ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES} ${Catch_INCLUDE_DIRS}>
-    PRIVATE
-    src)

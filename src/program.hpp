@@ -24,30 +24,20 @@
 
 #pragma once
 
-#include "object.hpp"
+#include "shader.hpp"
 
 namespace wheels {
 namespace opengl {
-// shader
-class shader : public object {
+// program
+class program : public object {
 public:
-  enum class type : GLenum {
-    vertex = GL_VERTEX_SHADER,
-    tess_control = GL_TESS_CONTROL_SHADER,
-    tess_evaluation = GL_TESS_EVALUATION_SHADER,
-    geometry = GL_GEOMETRY_SHADER,
-    fragment = GL_FRAGMENT_SHADER,
-    compute = GL_COMPUTE_SHADER
-  };
+  explicit program(glfunctions *fun, const std::vector<shader *> &shaders);
+  ~program();
 
-public:
-  explicit shader(glfunctions *fun, type t, const char *src);
-  ~shader();
-
-  inline GLuint handle() const { return _shader; }
+  inline GLuint handle() const { return _program; }
 
 private:
-  GLuint _shader;
+  GLuint _program;
 };
 }
 }
