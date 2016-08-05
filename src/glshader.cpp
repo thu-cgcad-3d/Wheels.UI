@@ -1,4 +1,4 @@
-#include "shader.hpp"
+#include "glshader.hpp"
 
 #include "wheels/geometry.hpp"
 

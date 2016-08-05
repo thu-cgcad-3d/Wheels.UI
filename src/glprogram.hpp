@@ -24,30 +24,35 @@
 
 #pragma once
 
-#include "object.hpp"
+#include "glshader.hpp"
+#include "gltextures.hpp"
 
 namespace wheels {
 namespace opengl {
-// shader
-class shader : public object {
+struct uniform {
+  std::string name;
+  GLint location;
+};
+
+// program
+class program : public object {
 public:
-  enum class type : GLenum {
-    vertex = GL_VERTEX_SHADER,
-    tess_control = GL_TESS_CONTROL_SHADER,
-    tess_evaluation = GL_TESS_EVALUATION_SHADER,
-    geometry = GL_GEOMETRY_SHADER,
-    fragment = GL_FRAGMENT_SHADER,
-    compute = GL_COMPUTE_SHADER
+  explicit program(glfunctions *fun, const std::vector<shader *> &shaders);
+  virtual ~program();
+
+  inline GLuint handle() const { return _program; }
+
+  GLuint uniform_block_index(const char *uniform_block_name) const;
+
+  struct texture_slot {
+    GLuint slot_id;
+    glfunctions * glfun;
+    void bind(const textures & t) const;
   };
 
-public:
-  explicit shader(glfunctions *fun, type t, const char *src);
-  ~shader();
-
-  inline GLuint handle() const { return _shader; }
 
 private:
-  GLuint _shader;
+  GLuint _program;
 };
 }
 }

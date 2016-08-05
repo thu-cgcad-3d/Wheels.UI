@@ -24,34 +24,30 @@
 
 #pragma once
 
-#include <QtOpenGL>
-
-#include "wheels/vision.hpp"
-
-#include "shader.hpp"
-#include "program.hpp"
+#include "globject.hpp"
 
 namespace wheels {
-// qt_opengl_manager
-class qt_opengl_manager {
+namespace opengl {
+class framebuffers : public object {
 public:
-  qt_opengl_manager();
-  explicit qt_opengl_manager(QOpenGLContext *context);
-  ~qt_opengl_manager();
+  explicit framebuffers(glfunctions *fun, size_t n);
+  explicit framebuffers(glfunctions *fun, GLuint *fbs, size_t n);
+  virtual ~framebuffers();
 
-public:
-  void initialize_opengl() const;
+  framebuffers(const framebuffers &) = delete;
+  framebuffers(framebuffers && fb);
+  framebuffers & operator=(const framebuffers &) = delete;
+  framebuffers & operator=(framebuffers && fb);
 
-  // create_shader
-  std::unique_ptr<opengl::shader> create_shader(opengl::shader::type t,
-                                                const char *src) const;
-  // create_program
-  std::unique_ptr<opengl::program>
-  create_program(const std::vector<opengl::shader *> &shaders) const;
+  void swap(framebuffers & fb);
+  size_t size() const { return _size; }
 
-  // 
+  framebuffers operator[](size_t i) const;
 
-protected:
-  opengl::glfunctions *glfun;
+private:
+  size_t _size;
+  GLuint *_fbs;
+  bool _own_res;
 };
+}
 }

@@ -24,11 +24,54 @@
 
 #pragma once
 
-#include "wheels/geometry.hpp"
+#include "globject.hpp"
 
 namespace wheels {
-class scene {
+namespace opengl {
+// vertex_arrays
+class vertex_arrays : public object {
 public:
-  //void add_geometry(const std::string &name, const mesh<float> &m);
+  enum class vertex_attribute {
+    position,
+    normal,
+    tex_coord,
+    color,
+  };
+  enum class draw_mode : GLenum {
+    points = GL_POINTS,
+    lines = GL_LINES,
+    line_loop = GL_LINE_LOOP,
+    line_strip = GL_LINE_STRIP,
+    triangles = GL_TRIANGLES,
+    triangle_strip = GL_TRIANGLE_STRIP,
+    triangle_fan = GL_TRIANGLE_FAN,
+    quads = GL_QUADS,
+    quad_strip = GL_QUAD_STRIP,
+    polygon = GL_POLYGON,
+  };
+
+public:
+  explicit vertex_arrays(glfunctions *fun, size_t n);
+  explicit vertex_arrays(glfunctions *fun, GLuint *vaos, size_t n);
+  
+  virtual ~vertex_arrays();
+
+  vertex_arrays(const vertex_arrays &) = delete;
+  vertex_arrays(vertex_arrays &&fb);
+  vertex_arrays &operator=(const vertex_arrays &) = delete;
+  vertex_arrays &operator=(vertex_arrays &&fb);
+
+  void swap(vertex_arrays &fb);
+  size_t size() const { return _size; }
+
+  vertex_arrays operator[](size_t i) const;
+
+  //void draw() const;
+
+private:
+  size_t _size;
+  GLuint *_vaos;
+  bool _own_res;
 };
+}
 }

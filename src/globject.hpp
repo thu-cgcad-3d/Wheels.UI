@@ -24,12 +24,29 @@
 
 #pragma once
 
-#include "qt.hpp"
+#include <QtOpenGL>
+
+#include "wheels/tensor.hpp"
 
 namespace wheels {
+class opengl_manager;
 namespace opengl {
-class framebuffer {
-  //
+using glfunctions = QOpenGLExtraFunctions;
+class object {
+public:
+  object() : glfun(nullptr) {}
+  explicit object(glfunctions *f) : glfun(f) {}
+  virtual ~object() {}
+
+  wheels_allow_move_only(object);
+
+  void swap(object & o);
+
+protected:
+  glfunctions *glfun;
+  friend class opengl_manager;
 };
+
+
 }
 }

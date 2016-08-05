@@ -24,20 +24,45 @@
 
 #pragma once
 
-#include "shader.hpp"
+#include <QtOpenGL>
+
+#include "wheels/vision.hpp"
+
+#include "glbuffers.hpp"
+#include "glframebuffers.hpp"
+#include "globject.hpp"
+#include "glprogram.hpp"
+#include "glrenderbuffers.hpp"
+#include "glshader.hpp"
+#include "gltextures.hpp"
 
 namespace wheels {
 namespace opengl {
-// program
-class program : public object {
+class manager {
 public:
-  explicit program(glfunctions *fun, const std::vector<shader *> &shaders);
-  ~program();
+  manager();
+  explicit manager(QOpenGLContext *context);
+  virtual ~manager();
 
-  inline GLuint handle() const { return _program; }
+public:
+  // call initialize_opengl() before creating any opengl objects
+  void initialize_opengl() const;
 
-private:
-  GLuint _program;
+  // create_shader
+  std::unique_ptr<shader> create_shader(shader::type t, const char *src) const;
+  // create_program
+  std::unique_ptr<program>
+  create_program(const std::vector<shader *> &shaders) const;
+
+  // generate_texture
+  std::unique_ptr<textures> generate_textures(textures::type t,
+                                              size_t n = 1) const;
+
+  // generate_buffers
+  //std::unique_ptr<buffers
+
+protected:
+  glfunctions *glfun;
 };
 }
 }

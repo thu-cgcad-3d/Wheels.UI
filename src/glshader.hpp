@@ -24,19 +24,30 @@
 
 #pragma once
 
-#include <QtOpenGL>
+#include "globject.hpp"
 
 namespace wheels {
-class qt_opengl_manager;
 namespace opengl {
-using glfunctions = QOpenGLFunctions;
-class object {
+// shader
+class shader : public object {
 public:
-  explicit object(glfunctions *f) : glfun(f) {}
+  enum class type : GLenum {
+    vertex = GL_VERTEX_SHADER,
+    tess_control = GL_TESS_CONTROL_SHADER,
+    tess_evaluation = GL_TESS_EVALUATION_SHADER,
+    geometry = GL_GEOMETRY_SHADER,
+    fragment = GL_FRAGMENT_SHADER,
+    compute = GL_COMPUTE_SHADER
+  };
 
-protected:
-  glfunctions *glfun;
-  friend class qt_opengl_manager;
+public:
+  explicit shader(glfunctions *fun, type t, const char *src);
+  virtual ~shader();
+
+  inline GLuint handle() const { return _shader; }
+
+private:
+  GLuint _shader;
 };
 }
 }

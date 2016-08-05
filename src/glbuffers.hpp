@@ -24,11 +24,11 @@
 
 #pragma once
 
-#include "qt.hpp"
+#include "globject.hpp"
 
 namespace wheels {
 namespace opengl {
-class buffer {
+class buffers : public object {
 public:
   enum class type : GLenum {
     // The buffer will be used as a source for vertex data, but the connection
@@ -88,6 +88,47 @@ public:
     // blocks. This requires OpenGL 4.3 or ARB_shader_storage_buffer_object
     shader_storage = GL_SHADER_STORAGE_BUFFER,
   };
+
+  enum class data_usage : GLenum {
+    stream_draw = GL_STREAM_DRAW,
+    stream_read = GL_STREAM_READ,
+    stream_copy = GL_STREAM_COPY,
+    static_draw = GL_STATIC_DRAW,
+    static_read = GL_STATIC_READ,
+    static_copy = GL_STATIC_COPY,
+    dynamic_draw = GL_DYNAMIC_DRAW,
+    dynamic_read = GL_DYNAMIC_READ,
+    dynamic_copy = GL_DYNAMIC_COPY,
+  };
+
+public:
+  explicit buffers(glfunctions *fun, size_t n);
+  explicit buffers(glfunctions *fun, GLuint *fbs, size_t n);
+  explicit buffers(glfunctions *fun, type t, void *ptr, size_t nbytes,
+                   data_usage usage);
+  virtual ~buffers();
+
+  buffers(const buffers &) = delete;
+  buffers(buffers &&fb);
+  buffers &operator=(const buffers &) = delete;
+  buffers &operator=(buffers &&fb);
+
+  void swap(buffers &fb);
+  size_t size() const { return _size; }
+
+  buffers operator[](size_t i) const;
+
+public:
+  void set_data(void *ptr, size_t nbytes, data_usage usage, size_t i = 0) const;
+  uint8_t const *ptr(size_t i = 0) const;
+  size_t nbytes(size_t i = 0) const;
+  data_usage usage(size_t i = 0) const;
+
+private:
+  type _type;
+  size_t _size;
+  GLuint *_buffers;
+  bool _own_res;
 };
 }
 }

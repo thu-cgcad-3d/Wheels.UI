@@ -24,11 +24,30 @@
 
 #pragma once
 
-#include "wheels/geometry.hpp"
+#include "globject.hpp"
 
 namespace wheels {
-class scene {
+namespace opengl {
+class renderbuffers : public object {
 public:
-  //void add_geometry(const std::string &name, const mesh<float> &m);
+  explicit renderbuffers(glfunctions *fun, size_t n);
+  explicit renderbuffers(glfunctions *fun, GLuint *fbs, size_t n);
+  virtual ~renderbuffers();
+
+  renderbuffers(const renderbuffers &) = delete;
+  renderbuffers(renderbuffers && fb);
+  renderbuffers & operator=(const renderbuffers &) = delete;
+  renderbuffers & operator=(renderbuffers && fb);
+
+  void swap(renderbuffers & fb);
+  size_t size() const { return _size; }
+
+  renderbuffers operator[](size_t i) const;
+
+private:
+  size_t _size;
+  GLuint *_rbs;
+  bool _own_res;
 };
+}
 }
