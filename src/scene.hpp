@@ -24,11 +24,90 @@
 
 #pragma once
 
-#include "wheels/geometry.hpp"
+#include <unordered_map>
+
+#include "discretize.hpp"
+#include "light.hpp"
+#include "material.hpp"
 
 namespace wheels {
+namespace qt {
+class SceneWidget;
+}
 class scene {
 public:
-  //void add_geometry(const std::string &name, const mesh<float> &m);
+  struct geometry_data {
+    GLuint vao;
+    GLuint buffers[2];
+    GLenum draw_mode;
+    GLsizei count;
+    GLenum index_type;
+  };
+  struct material_data {
+    struct {
+      GLuint program;
+      GLint uniform_model_matrix;
+      GLint uniform_shadow_matrices;
+      GLint uniform_light_position;
+      GLint uniform_far_plane;
+    } first_pass;
+    struct {
+      GLuint program;
+      GLint uniform_view_matrix, uniform_proj_matrix, uniform_model_matrix;
+      GLint uniform_tex_diffuse;
+      GLint uniform_depth_map;
+      GLint uniform_eye, uniform_light_position;
+      GLint uniform_far_plane;
+    } second_pass;
+    GLuint tex[underlying(opengl::texture_attribute::std_tex_num)];
+  };
+  struct light_data {
+    vec3f position;
+    mat4f shadow_matrices[6];
+    GLuint fbo_shadow;
+    GLuint tex_shadow;
+  };
+  struct object_data {
+    std::string geo_name;
+    std::string mat_name;
+    mat4f model_matrix;
+  };
+
+private:
+  explicit scene();
+  virtual ~scene();
+
+  void setup(opengl::glfunctions *glf);
+  opengl::glfunctions *glfun() const { return _glfun; }
+
+public:
+  void add(const std::string &name,
+           const polygonal_mesh<float, uint32_t, 3> &mesh);
+  void add(const std::string &name,
+           const polygonal_mesh<float, uint32_t, 2> &mesh);
+
+  void add(const std::string &name, const material &mat);
+
+  void add(const std::string &name, const point_light<float> &l);
+
+  void add_object(const std::string &name, const std::string &geo_name,
+                  const std::string &mat_name);
+
+  void set_camera(const perspective_camera<float> &c) { _camera = c; }
+  const auto &camera() const { return _camera; }
+  auto &camera() { return _camera; }
+
+private:
+  void render(GLuint default_fbo) const;
+  bool error() const;
+
+private:
+  friend class qt::SceneWidget;
+  opengl::glfunctions *_glfun;
+  std::unordered_map<std::string, geometry_data> _name2geo;
+  std::unordered_map<std::string, material_data> _name2mat;
+  std::unordered_map<std::string, object_data> _name2obj;
+  std::unordered_map<std::string, light_data> _name2light;
+  perspective_camera<float> _camera;
 };
 }

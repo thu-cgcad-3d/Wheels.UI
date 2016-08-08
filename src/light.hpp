@@ -24,30 +24,12 @@
 
 #pragma once
 
-#include "globject.hpp"
+#include "utility.hpp"
 
 namespace wheels {
-namespace opengl {
-class framebuffers : public object {
+template <class E> class point_light {
 public:
-  explicit framebuffers(glfunctions *fun, size_t n);
-  explicit framebuffers(glfunctions *fun, GLuint *fbs, size_t n);
-  virtual ~framebuffers();
-
-  framebuffers(const framebuffers &) = delete;
-  framebuffers(framebuffers && fb);
-  framebuffers & operator=(const framebuffers &) = delete;
-  framebuffers & operator=(framebuffers && fb);
-
-  void swap(framebuffers & fb);
-  size_t size() const { return _size; }
-
-  framebuffers operator[](size_t i) const;
-
-private:
-  size_t _size;
-  GLuint *_fbs;
-  bool _own_res;
+  vec_<E, 3> position;
+  //vec_<E, 3> ambient, diffuse, specular;
 };
-}
 }

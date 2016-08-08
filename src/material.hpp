@@ -24,35 +24,14 @@
 
 #pragma once
 
-#include "glshader.hpp"
-#include "gltextures.hpp"
+#include "utility.hpp"
 
 namespace wheels {
-namespace opengl {
-struct uniform {
-  std::string name;
-  GLint location;
-};
-
-// program
-class program : public object {
+class material {
 public:
-  explicit program(glfunctions *fun, const std::vector<shader *> &shaders);
-  virtual ~program();
-
-  inline GLuint handle() const { return _program; }
-
-  GLuint uniform_block_index(const char *uniform_block_name) const;
-
-  struct texture_slot {
-    GLuint slot_id;
-    glfunctions * glfun;
-    void bind(const textures & t) const;
-  };
-
-
-private:
-  GLuint _program;
+  //std::string frag_shader_src;
+  std::shared_ptr<image3f32> normal_map;
+  std::shared_ptr<image1f32> alpha_map;
+  std::shared_ptr<image3f32> ambient_map, diffuse_map, specular_map;
 };
-}
 }
