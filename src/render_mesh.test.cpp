@@ -1,11 +1,11 @@
 #include <catch.hpp>
 
-#include "polygonal_mesh.hpp"
+#include "render_mesh.hpp"
 
 using namespace wheels;
 
-TEST_CASE("polygonal mesh", "[polygonal_mesh]") {
-  polygonal_mesh<double, int, 3> pm;
+TEST_CASE("polygonal mesh", "[render_mesh]") {
+  render_mesh<double, int, 3> pm;
   pm.emplace_vert(vec3(0, 0, 0));
   pm.emplace_vert(vec3(0, 1, 0));
   pm.emplace_vert(vec3(1, 1, 0));

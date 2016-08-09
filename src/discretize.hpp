@@ -1,11 +1,11 @@
 #pragma once
 
-#include "polygonal_mesh.hpp"
+#include "render_mesh.hpp"
 
 namespace wheels {
 // polygon
 template <class E, class IndexT>
-void discretize(polygonal_mesh<E, IndexT, 3> &mesh,
+void discretize(render_mesh<E, IndexT, 3> &mesh,
                 const polygon<vec_<E, 3>, vec_<E, 3>> &p) {
   IndexT cur_nverts = mesh.verts().numel();
   for (int i = 0; i < p.corners.numel(); i++) {
@@ -16,7 +16,7 @@ void discretize(polygonal_mesh<E, IndexT, 3> &mesh,
 
 // box
 template <class E, class IndexT>
-void discretize(polygonal_mesh<E, IndexT, 3> &mesh, const box<vec_<E, 3>> &b) {
+void discretize(render_mesh<E, IndexT, 3> &mesh, const box<vec_<E, 3>> &b) {
   if (b.is_null()) {
     return;
   }
@@ -49,7 +49,7 @@ void discretize(polygonal_mesh<E, IndexT, 3> &mesh, const box<vec_<E, 3>> &b) {
 
 // sphere
 template <class E, class IndexT>
-void discretize(polygonal_mesh<E, IndexT, 3> &mesh,
+void discretize(render_mesh<E, IndexT, 3> &mesh,
                 const sphere<vec_<E, 3>, E> &s) {
   int m = 128;
   int n = 64;

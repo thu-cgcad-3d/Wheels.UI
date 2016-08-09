@@ -63,7 +63,6 @@ public:
   };
   struct light_data {
     vec3f position;
-    mat4f shadow_matrices[6];
     GLuint fbo_shadow;
     GLuint tex_shadow;
   };
@@ -82,9 +81,9 @@ private:
 
 public:
   void add(const std::string &name,
-           const polygonal_mesh<float, uint32_t, 3> &mesh);
+           const render_mesh<float, uint32_t, 3> &mesh);
   void add(const std::string &name,
-           const polygonal_mesh<float, uint32_t, 2> &mesh);
+           const render_mesh<float, uint32_t, 2> &mesh);
 
   void add(const std::string &name, const material &mat);
 

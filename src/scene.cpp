@@ -16,7 +16,7 @@ namespace detail {
 template <class E, class IndexT, size_t N>
 scene::geometry_data
 _convert_mesh_to_vao(opengl::glfunctions *glfun,
-                     const polygonal_mesh<E, IndexT, N> &mesh) {
+                     const render_mesh<E, IndexT, N> &mesh) {
   scene::geometry_data gd;
 
   glfun->glGenBuffers(2, gd.buffers);
@@ -26,17 +26,11 @@ _convert_mesh_to_vao(opengl::glfunctions *glfun,
   glfun->glBindBuffer(GL_ARRAY_BUFFER, gd.buffers[0]);
   glfun->glBufferData(GL_ARRAY_BUFFER, mesh.nbytes_of_verts(), mesh.verts_ptr(),
                       GL_STATIC_DRAW);
-  using vertex = typename polygonal_mesh<E, IndexT, N>::vertex;
+  using vertex = typename render_mesh<E, IndexT, N>::vertex;
   static_assert(sizeof(vertex) == 8 * sizeof(float), "");
-
-  auto a = mesh.indices_ptr();
-  auto na = mesh.nbytes_of_indices();
-  auto b = mesh.verts_ptr();
-  auto nb = mesh.nbytes_of_verts();
 
   glfun->glEnableVertexAttribArray(
       underlying(opengl::vertex_attribute::position));
-  // constexpr auto sss0 = offsetof(vertex, position);
   glfun->glVertexAttribPointer(underlying(opengl::vertex_attribute::position),
                                3, opengl::data_type<E>::value, GL_FALSE,
                                sizeof(vertex),
@@ -44,7 +38,6 @@ _convert_mesh_to_vao(opengl::glfunctions *glfun,
 
   glfun->glEnableVertexAttribArray(
       underlying(opengl::vertex_attribute::normal));
-  // constexpr auto sss1 = offsetof(vertex, normal);
   glfun->glVertexAttribPointer(underlying(opengl::vertex_attribute::normal), 3,
                                opengl::data_type<E>::value, GL_FALSE,
                                sizeof(vertex),
@@ -52,7 +45,6 @@ _convert_mesh_to_vao(opengl::glfunctions *glfun,
 
   glfun->glEnableVertexAttribArray(
       underlying(opengl::vertex_attribute::tex_coord));
-  // constexpr auto sss2 = offsetof(vertex, tex_coord);
   glfun->glVertexAttribPointer(underlying(opengl::vertex_attribute::tex_coord),
                                2, opengl::data_type<E>::value, GL_FALSE,
                                sizeof(vertex),
@@ -88,12 +80,12 @@ _convert_mesh_to_vao(opengl::glfunctions *glfun,
 }
 
 void scene::add(const std::string &name,
-                const polygonal_mesh<float, uint32_t, 3> &mesh) {
+                const render_mesh<float, uint32_t, 3> &mesh) {
   _name2geo[name] = detail::_convert_mesh_to_vao(_glfun, mesh);
 }
 
 void scene::add(const std::string &name,
-                const polygonal_mesh<float, uint32_t, 2> &mesh) {
+                const render_mesh<float, uint32_t, 2> &mesh) {
   _name2geo[name] = detail::_convert_mesh_to_vao(_glfun, mesh);
 }
 
@@ -192,6 +184,8 @@ GLuint _convert_image_to_texture(opengl::glfunctions *glfun,
 }
 }
 
+static constexpr int SHADOW_WIDTH = 1024;
+static constexpr int SHADOW_HEIGHT = 1024;
 void scene::add(const std::string &name, const material &mat) {
   material_data mat_data;
 
@@ -240,6 +234,7 @@ void scene::add(const std::string &name, const material &mat) {
     
         // Write this as modified depth
         gl_FragDepth = light_distance;
+        //gl_FragDepth = 1.0;
       } 
     )SHADER";
   GLuint program_shading = detail::_compile_shader_program(
@@ -311,7 +306,7 @@ void scene::add(const std::string &name, const material &mat) {
       void main(){
         vec3 color = texture(tex_diffuse, fs_in.tex_coord).rgb;
         vec3 normal = normalize(fs_in.normal);
-        vec3 light_color = vec3(0.3);
+        vec3 light_color = vec3(0.5);
       
         // Ambient
         vec3 ambient = 0.3 * color;
@@ -332,9 +327,7 @@ void scene::add(const std::string &name, const material &mat) {
         // Calculate shadow
         float shadow = compute_shadow(fs_in.frag_pos);                      
         vec3 lighting = (ambient + (1.0 - shadow) * (diffuse + specular)) * color; 
-        //vec3 lighting = texture(depth_map, fs_in.frag_pos - light_position).r * color;
         FragColor = vec4(lighting, 1.0);
-        //FragColor = vec4(vec3(texture(depth_map, fs_in.frag_pos - light_position).r / far_plane), 1.0);  
       }    
     )SHADER";
   GLuint program_rendering = detail::_compile_shader_program(
@@ -376,13 +369,11 @@ void scene::add(const std::string &name, const material &mat) {
   _name2mat[name] = mat_data;
 }
 
-static constexpr int SHADOW_WIDTH = 1024;
-static constexpr int SHADOW_HEIGHT = 1024;
-static const mat4f SHADOW_PROJECTION_MATRIX = perspective_rh<float>(
-    numeric::PI / 2.0, (float)SHADOW_WIDTH / (float)(SHADOW_HEIGHT), 1.0f,
-    25.0f);
-
 void scene::add(const std::string &name, const point_light<float> &l) {
+  // gen the frame buffer
+  GLuint fbo;
+  _glfun->glGenFramebuffers(1, &fbo);
+
   // gen the cube map
   GLuint shadow_map;
   _glfun->glGenTextures(1, &shadow_map);
@@ -391,6 +382,7 @@ void scene::add(const std::string &name, const point_light<float> &l) {
     _glfun->glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0,
                          GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0,
                          GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    assert(error());
   }
   _glfun->glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
                           GL_NEAREST);
@@ -404,9 +396,6 @@ void scene::add(const std::string &name, const point_light<float> &l) {
                           GL_CLAMP_TO_EDGE);
   assert(error());
 
-  // gen the frame buffer
-  GLuint fbo;
-  _glfun->glGenFramebuffers(1, &fbo);
   _glfun->glBindFramebuffer(GL_FRAMEBUFFER, fbo);
   _glfun->glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_map,
                                0);
@@ -448,31 +437,11 @@ void scene::add(const std::string &name, const point_light<float> &l) {
     }
     assert(status == GL_FRAMEBUFFER_COMPLETE);
   }
-  //_glfun->glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   light_data ld;
   ld.fbo_shadow = fbo;
   ld.tex_shadow = shadow_map;
   ld.position = l.position;
-
-  ld.shadow_matrices[0] =
-      SHADOW_PROJECTION_MATRIX *
-      look_at_rh(l.position, l.position + vec3f(1, 0, 0), vec3f(0, -1, 0));
-  ld.shadow_matrices[1] =
-      SHADOW_PROJECTION_MATRIX *
-      look_at_rh(l.position, l.position + vec3f(-1, 0, 0), vec3f(0, -1, 0));
-  ld.shadow_matrices[2] =
-      SHADOW_PROJECTION_MATRIX *
-      look_at_rh(l.position, l.position + vec3f(0, 1, 0), vec3f(0, 0, 1));
-  ld.shadow_matrices[3] =
-      SHADOW_PROJECTION_MATRIX *
-      look_at_rh(l.position, l.position + vec3f(0, -1, 0), vec3f(0, 0, -1));
-  ld.shadow_matrices[4] =
-      SHADOW_PROJECTION_MATRIX *
-      look_at_rh(l.position, l.position + vec3f(0, 0, 1), vec3f(0, -1, 0));
-  ld.shadow_matrices[5] =
-      SHADOW_PROJECTION_MATRIX *
-      look_at_rh(l.position, l.position + vec3f(0, 0, -1), vec3f(0, -1, 0));
   assert(error());
 
   _name2light[name] = ld;
@@ -488,10 +457,12 @@ void scene::add_object(const std::string &name, const std::string &geo_name,
 }
 
 void scene::render(GLuint default_fbo) const {
-  float far_plane = 25.0;
-  _glfun->glDisable(GL_MULTISAMPLE);
+  static constexpr float FAR_PLANE = 50.0f;
+
   _glfun->glEnable(GL_DEPTH_TEST);
   _glfun->glDisable(GL_CULL_FACE);
+  _glfun->glDisable(GL_MULTISAMPLE);
+  _glfun->glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
   auto &light = _name2light.begin()->second;
 
@@ -499,20 +470,44 @@ void scene::render(GLuint default_fbo) const {
   _glfun->glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
   _glfun->glBindFramebuffer(GL_FRAMEBUFFER, light.fbo_shadow);
   _glfun->glBindTexture(GL_TEXTURE_CUBE_MAP, light.tex_shadow);
-  //_glfun->glClearDepth(2.0);
   assert(error());
   _glfun->glClear(GL_DEPTH_BUFFER_BIT);
   assert(error());
+
+  const mat4f shadow_projection_matrix = perspective<float>(
+      numeric::PI / 2.0, (float)SHADOW_WIDTH / (float)(SHADOW_HEIGHT), 1.0f,
+      FAR_PLANE);
+  const mat4f shadow_matrices[6] = {
+      shadow_projection_matrix * look_at(light.position,
+                                         light.position + vec3f(1, 0, 0),
+                                         vec3f(0, -1, 0)),
+      shadow_projection_matrix * look_at(light.position,
+                                         light.position + vec3f(-1, 0, 0),
+                                         vec3f(0, -1, 0)),
+      shadow_projection_matrix * look_at(light.position,
+                                         light.position + vec3f(0, 1, 0),
+                                         vec3f(0, 0, 1)),
+      shadow_projection_matrix * look_at(light.position,
+                                         light.position + vec3f(0, -1, 0),
+                                         vec3f(0, 0, -1)),
+      shadow_projection_matrix * look_at(light.position,
+                                         light.position + vec3f(0, 0, 1),
+                                         vec3f(0, -1, 0)),
+      shadow_projection_matrix * look_at(light.position,
+                                         light.position + vec3f(0, 0, -1),
+                                         vec3f(0, -1, 0)),
+  };
+
   for (auto &o : _name2obj) {
     auto &obj = o.second;
     auto &geo = _name2geo.at(obj.geo_name);
     auto &mat = _name2mat.at(obj.mat_name);
     _glfun->glUseProgram(mat.first_pass.program);
-    _glfun->glUniformMatrix4fv(mat.first_pass.uniform_model_matrix, 1, GL_FALSE,
+    _glfun->glUniformMatrix4fv(mat.first_pass.uniform_model_matrix, 1, GL_TRUE,
                                o.second.model_matrix.ptr());
     _glfun->glUniformMatrix4fv(mat.first_pass.uniform_shadow_matrices, 6,
-                               GL_FALSE, light.shadow_matrices[0].ptr());
-    _glfun->glUniform1f(mat.first_pass.uniform_far_plane, far_plane);
+                               GL_TRUE, shadow_matrices[0].ptr());
+    _glfun->glUniform1f(mat.first_pass.uniform_far_plane, FAR_PLANE);
     _glfun->glUniform3fv(mat.first_pass.uniform_light_position, 1,
                          light.position.ptr());
     assert(error());
@@ -520,38 +515,25 @@ void scene::render(GLuint default_fbo) const {
     _glfun->glDrawElements(geo.draw_mode, geo.count, geo.index_type, nullptr);
   }
 
-  if(false){
-    // get the rendered depths
-    std::vector<image1f32> depths_tex(
-        6, image1f32(make_shape(SHADOW_WIDTH, SHADOW_WIDTH)));
-    _glfun->glBindTexture(GL_TEXTURE_CUBE_MAP, light.tex_shadow);
-    for (int i = 0; i < 6; i++) {
-      _glfun->glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0,
-                            GL_DEPTH_COMPONENT, GL_FLOAT, depths_tex[i].ptr());
-    }
-    println();
-  }
-
   // second pass
+  _glfun->glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
   _glfun->glEnable(GL_MULTISAMPLE);
   _glfun->glViewport(0, 0, _camera.width, _camera.height);
-  _glfun->glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
-  _glfun->glClearColor(0.0, 0.0, 0.3, 0.0);
   _glfun->glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
   for (auto &o : _name2obj) {
     auto &obj = o.second;
     auto &geo = _name2geo.at(obj.geo_name);
     auto &mat = _name2mat.at(obj.mat_name);
     _glfun->glUseProgram(mat.second_pass.program);
-    _glfun->glUniformMatrix4fv(mat.second_pass.uniform_view_matrix, 1, GL_FALSE,
+    _glfun->glUniformMatrix4fv(mat.second_pass.uniform_view_matrix, 1, GL_TRUE,
                                _camera.view_matrix().ptr());
-    _glfun->glUniformMatrix4fv(mat.second_pass.uniform_proj_matrix, 1, GL_FALSE,
+    _glfun->glUniformMatrix4fv(mat.second_pass.uniform_proj_matrix, 1, GL_TRUE,
                                _camera.projection_matrix().ptr());
 
     _glfun->glUniformMatrix4fv(mat.second_pass.uniform_model_matrix, 1,
-                               GL_FALSE, o.second.model_matrix.ptr());
+                               GL_TRUE, o.second.model_matrix.ptr());
 
-    _glfun->glUniform1f(mat.second_pass.uniform_far_plane, far_plane);
+    _glfun->glUniform1f(mat.second_pass.uniform_far_plane, FAR_PLANE);
     _glfun->glUniform3fv(mat.second_pass.uniform_light_position, 1,
                          light.position.ptr());
     _glfun->glUniform3fv(mat.second_pass.uniform_eye, 1, _camera.eye.ptr());

@@ -27,25 +27,25 @@ endif ()
 
 AddWheelsProject(ui)
 
-add_dependencies(${PROJECT_NAME} wheels.vision)
+add_dependencies(${PROJECT_NAME} wheels.geometry)
 target_link_libraries(${PROJECT_NAME} ${Qt_LIBS})
 target_include_directories(${PROJECT_NAME} 
     PUBLIC 
-    $<BUILD_INTERFACE:  ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}> 
-    $<INSTALL_INTERFACE:${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}>
+    $<BUILD_INTERFACE:  ${wheels.geometry_INCLUDE_DIRS} ${Qt_INCLUDES}> 
+    $<INSTALL_INTERFACE:${wheels.geometry_INCLUDE_DIRS} ${Qt_INCLUDES}>
     PRIVATE)
 target_link_libraries(${PROJECT_NAME}.test ${Qt_LIBS})
 target_include_directories(${PROJECT_NAME}.test
     PUBLIC
-    $<BUILD_INTERFACE:  ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}>
-    $<INSTALL_INTERFACE:${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}>
+    $<BUILD_INTERFACE:  ${wheels.geometry_INCLUDE_DIRS} ${Qt_INCLUDES}>
+    $<INSTALL_INTERFACE:${wheels.geometry_INCLUDE_DIRS} ${Qt_INCLUDES}>
     PRIVATE)
 
 # Expose public includes to other
 # subprojects through cache variable.
 set(${PROJECT_NAME}_INCLUDE_DIRS 
     ${PROJECT_SOURCE_DIR}/include 
-    ${wheels.vision_INCLUDE_DIRS} ${Qt_INCLUDES}
+    ${wheels.geometry_INCLUDE_DIRS} ${Qt_INCLUDES}
     CACHE EXTERNAL "${PROJECT_NAME}: Include Directories" FORCE)
-set(${PROJECT_NAME}_LIBS wheels.ui.lib ${wheels.vision_LIBS} ${Qt_LIBS}
+set(${PROJECT_NAME}_LIBS wheels.ui.lib ${wheels.geometry_LIBS} ${Qt_LIBS}
     CACHE EXTERNAL "${PROJECT_NAME}: Link Libraries" FORCE)
