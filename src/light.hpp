@@ -30,6 +30,6 @@ namespace wheels {
 template <class E> class point_light {
 public:
   vec_<E, 3> position;
-  //vec_<E, 3> ambient, diffuse, specular;
+  vec_<E, 3> color;
 };
 }

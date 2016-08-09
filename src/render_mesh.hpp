@@ -28,6 +28,19 @@ public:
     std::for_each(_indices.begin(), _indices.end(), fun);
   }
 
+  render_mesh &insided_out() & {
+    for_each_indices(
+        [](auto &inds) { std::reverse(inds.begin(), inds.end()); });
+    for_each_vert([](auto &v) { v.normal = -v.normal; });
+    return *this;
+  }
+  render_mesh &&insided_out() && {
+    for_each_indices(
+        [](auto &inds) { std::reverse(inds.begin(), inds.end()); });
+    for_each_vert([](auto &v) { v.normal = -v.normal; });
+    return std::move(*this);
+  }
+
   const E *verts_ptr() const { return (const E *)(_verts.data()); }
   const IndexT *indices_ptr() const {
     return (const IndexT *)(_indices.data());
