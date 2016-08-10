@@ -1,27 +1,15 @@
-#include <catch.hpp>
+# Wheels.UI
 
-#include "scene.hpp"
-#include "widget.hpp"
+The UI module for 3D visualization in wheels.
 
-using namespace wheels;
+## Features 
+1. Multiple lights shadowing;
+2. Automatic discretization of common shapes;
+3. ...
 
-TEST_CASE("scene multiple lights", "[scene][lights]") {
-  int argc = 1;
-  char *argv = "scene simple";
-  QApplication app(argc, &argv);
-
-  QSurfaceFormat format;
-  format.setDepthBufferSize(24);
-  format.setStencilBufferSize(8);
-  format.setVersion(4, 3);
-  format.setSamples(16);
-  format.setProfile(QSurfaceFormat::CoreProfile);
-  QSurfaceFormat::setDefaultFormat(format);
-
-  qDebug("OpenGL version: %d.%d",
-         QSurfaceFormat::defaultFormat().majorVersion(),
-         QSurfaceFormat::defaultFormat().minorVersion());
-
+## Samples
+Write these code:
+```cpp
   qt::SceneWidget sw([](scene &s) {
     s.add_light(point_light<float>{vec3f(3, 5, 8), color::white});
     s.add_light(point_light<float>{vec3f(-7, -5, 4), color::orange});
@@ -76,5 +64,9 @@ TEST_CASE("scene multiple lights", "[scene][lights]") {
     }
   });
   sw.show();
-  app.exec();
-}
+```
+And get the results!
+
+![im1](images/scene_widget_01.PNG)
+![im2](images/scene_widget_02.PNG)
+![im3](images/scene_widget_03.PNG)

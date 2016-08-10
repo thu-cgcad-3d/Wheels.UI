@@ -8,6 +8,7 @@ SceneWidget::SceneWidget(std::function<void(scene &s)> f)
     : _init_fun(f), _scene(std::make_unique<scene>()) {
   setMouseTracking(true);
   resize(600, 600);
+  setWindowTitle(tr("wheels::qt::SceneWidget"));
 }
 
 void SceneWidget::initializeGL() {
