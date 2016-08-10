@@ -26,6 +26,7 @@
 
 #include <unordered_map>
 
+#include "color.hpp"
 #include "discretize.hpp"
 #include "light.hpp"
 #include "material.hpp"
@@ -36,29 +37,59 @@ class SceneWidget;
 }
 class scene {
 public:
-private:
   explicit scene();
+  scene(scene &&) = default;
+  scene(const scene &) = delete;
+  scene &operator=(scene &&) = default;
+  scene &operator=(const scene &) = delete;
+
   virtual ~scene();
 
   void setup(opengl::glfunctions *glf);
   opengl::glfunctions *glfun() const { return _glfun; }
 
 public:
-  void add(const std::string &name,
-           const render_mesh<float, uint32_t, 3> &mesh);
-  void add(const std::string &name,
-           const render_mesh<float, uint32_t, 2> &mesh);
+  // add_geometry
+  void add_geometry(const std::string &name,
+                    const render_mesh<float, uint32_t, 3> &mesh);
+  void add_geometry(const std::string &name,
+           render_mesh<float, uint32_t, 3> &&mesh);
 
-  void add(const std::string &name, const material &mat);
+  template <class FirstGeoT, class... GeoTs>
+  inline void add_geometry(const std::string &name, FirstGeoT &&first_geo,
+                           GeoTs &&... geos) {
+    add_geometry(name, stream_to(render_mesh<float, uint32_t, 3>(),
+                                 std::forward<FirstGeoT>(first_geo),
+                                 std::forward<GeoTs>(geos)...));
+  }
 
-  void add(const point_light<float> &l);
+  // add_material
+  void add_material(const std::string &name, const material &mat);
+  void add_material(const std::string &name, const vec3f &diffuse_color);
+  void add_material(const std::string &name, image3f32 &&diffuse_map);
 
+  // add_light
+  void add_light(const point_light<float> &l);
+
+  // add_object
+  template <class MatT = mat4f>
   void add_object(const std::string &name, const std::string &geo_name,
-                  const std::string &mat_name);
+                  const std::string &mat_name,
+                  MatT &&model_matrix = eye<float>(4, 4)) {
+    assert(_name2geo.find(geo_name) != _name2geo.end());
+    assert(_name2mat.find(mat_name) != _name2mat.end());
+    object_data od;
+    od.geo_name = geo_name;
+    od.mat_name = mat_name;
+    od.model_matrix = std::forward<MatT>(model_matrix);
+    _name2obj[name] = od;
+  }
 
   void set_camera(const perspective_camera<float> &c) { _camera = c; }
   const auto &camera() const { return _camera; }
   auto &camera() { return _camera; }
+
+  box<vec3f> get_bounding_box() const;
 
 private:
   void init(GLuint default_fbo);
@@ -77,6 +108,7 @@ private:
     GLenum draw_mode;
     GLsizei count;
     GLenum index_type;
+    render_mesh<float, uint32_t, 3> mesh;
   };
   std::unordered_map<std::string, geometry_data> _name2geo;
 
@@ -107,13 +139,13 @@ private:
   // lights
   struct light_data {
     GLuint fbo_shadow;
-    GLuint tex_shadow;
+    GLuint tex_depth_map;
   };
   std::vector<light_data> _light_data_table;
   std::vector<vec_<mat4f, 6>> _light_shadow_matrices;
   std::vector<vec3f> _light_positions;
   std::vector<vec3f> _light_colors;
-  std::vector<GLint> _depth_maps;
+  std::vector<GLint> _depth_map_uniform_values;
   std::vector<GLfloat> _far_planes;
 
   // objects

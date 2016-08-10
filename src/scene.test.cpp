@@ -7,7 +7,7 @@ using namespace wheels;
 
 TEST_CASE("scene multiple lights", "[scene][lights]") {
   int argc = 1;
-  char * argv = "scene simple";
+  char *argv = "scene simple";
   QApplication app(argc, &argv);
 
   QSurfaceFormat format;
@@ -23,36 +23,45 @@ TEST_CASE("scene multiple lights", "[scene][lights]") {
          QSurfaceFormat::defaultFormat().minorVersion());
 
   qt::SceneWidget sw([](scene &s) {
-    s.add(point_light<float>{vec3f(3, 3, 3), vec3f(1, 1, 1)});
-    s.add(point_light<float>{vec3f(5, -5, 3), vec3f(1, 0, 1)});
-    s.add(point_light<float>{vec3f(-3, 3, -3), vec3f(1, 1, 1)});
-    s.add(point_light<float>{vec3f(0, 7, -5), vec3f(1, 1, 1)});
-    s.add(point_light<float>{vec3f(0, 7, 5), vec3f(1, 1, 1)});
+    s.add_light(point_light<float>{vec3f(3, 3, 5), color::white});
+    s.add_light(point_light<float>{vec3f(-7, -5, 8), color::orange});
+    s.add_light(point_light<float>{vec3f(0, 0, -5), color::white});
 
-    s.add("geo_big_box", (render_mesh<float, uint32_t, 3>() << box<vec3f>(
-                              vec3f(-10, -10, -10), vec3f(10, 10, 10)))
-                             .insided_out());
+    s.add_material("white", color::white);
+    s.add_material("light gray", color::light_gray);
 
-    s.add("geo_spheres", render_mesh<float, uint32_t, 3>()
-                             << sphere<vec3f, float>{vec3f(0, 0, 2.0f), 1.0f}
-                             << sphere<vec3f, float>{vec3f(-2, -2, 2.0f), 1.0f}
-                             << sphere<vec3f, float>{vec3f(3, 3, 3.0f), 2.0f});
+    s.add_material("red", color::red);
+    s.add_material("green", color::green);
+    s.add_material("blue", color::blue);
 
-    s.add("mat_default",
-          material{nullptr, nullptr, nullptr,
-                   std::make_shared<image3f32>(image3f32(
-                       make_shape(2, 2), {vec3f(1, 0, 0), vec3f(0, 0, 1),
-                                          vec3f(0, 0, 1), vec3f(1, 0, 0)})),
-                   nullptr});
+    s.add_geometry("plate",
+                   box<vec3f>(vec3f(-11, -11, -1.3), vec3f(11, 11, -1.0)));
 
-    std::default_random_engine rng;
-    s.add("mat_random", material{nullptr, nullptr, nullptr,
-                                 std::make_shared<image3f32>(
-                                     rand<vec3f>(make_shape(10, 10), rng)),
-                                 nullptr});
+    s.add_geometry(
+        "xbar",
+        make_cylinder_along(make_line(vec3f(0, 0, 0), vec3f(10, 0, 0)), 0.5f));
+    s.add_geometry(
+        "ybar",
+        make_cylinder_along(make_line(vec3f(0, 0, 0), vec3f(0, 10, 0)), 0.5f));
+    s.add_geometry(
+        "zbar",
+        make_cylinder_along(make_line(vec3f(0, 0, 0), vec3f(0, 0, 10)), 0.5f));
 
-    s.add_object("big_box", "geo_big_box", "mat_random");
-    s.add_object("spheres", "geo_spheres", "mat_default");
+    s.add_geometry("ball", sphere<vec3f, float>{vec3f(), 1.0f});
+
+    s.add_object("x", "xbar", "red");
+    s.add_object("y", "ybar", "green");
+    s.add_object("z", "zbar", "blue");
+    s.add_object("o", "ball", "light gray");
+
+    s.add_object("plate", "plate", "white");
+
+    s.add_object("ox", "ball", "red",
+                 make_transform().translate(vec3f(10, 0, 0)).matrix());
+    s.add_object("oy", "ball", "green",
+                 make_transform().translate(vec3f(0, 10, 0)).matrix());
+    s.add_object("oz", "ball", "blue",
+                 make_transform().translate(vec3f(0, 0, 10)).matrix());
   });
   sw.show();
   app.exec();

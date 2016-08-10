@@ -7,8 +7,29 @@
 namespace wheels {
 scene::scene()
     : _glfun(nullptr), _camera(vec3f(0, 0, 15), vec3f(0, 0, 0), vec3f(0, 1, 0),
-                               500, 500, 250, vec2f(250, 250), 0.001, 1e4) {}
-scene::~scene() {}
+                               500, 500, 500, vec2f(250, 250), 0.001, 1e4) {}
+scene::~scene() {
+  if (!_glfun) {
+    return;
+  }
+  for (auto &gd : _name2geo) {
+    _glfun->glDeleteBuffers(2, gd.second.buffers);
+    _glfun->glDeleteVertexArrays(1, &gd.second.vao);
+  }
+  for (auto &md : _name2mat) {
+    _glfun->glDeleteProgram(md.second.first_pass.program);
+    _glfun->glDeleteProgram(md.second.second_pass.program);
+    for (GLuint tex : md.second.tex) {
+      if (tex != -1) {
+        _glfun->glDeleteTextures(1, &tex);
+      }
+    }
+  }
+  for (auto &ld : _light_data_table) {
+    _glfun->glDeleteFramebuffers(1, &ld.fbo_shadow);
+    _glfun->glDeleteTextures(1, &ld.tex_depth_map);
+  }
+}
 
 void scene::setup(opengl::glfunctions *glf) { _glfun = glf; }
 
@@ -76,18 +97,20 @@ void _convert_mesh_to_vao(opengl::glfunctions *glfun,
 }
 }
 
-void scene::add(const std::string &name,
-                const render_mesh<float, uint32_t, 3> &mesh) {
-  auto & gd = _name2geo[name];
+void scene::add_geometry(const std::string &name,
+                         const render_mesh<float, uint32_t, 3> &mesh) {
+  auto &gd = _name2geo[name];
+  gd.mesh = mesh;
   detail::_convert_mesh_to_vao(_glfun, mesh, gd.vao, gd.buffers, gd.draw_mode,
                                gd.count, gd.index_type);
 }
 
-void scene::add(const std::string &name,
-                const render_mesh<float, uint32_t, 2> &mesh) {
-  auto & gd = _name2geo[name];
+void scene::add_geometry(const std::string &name,
+                         render_mesh<float, uint32_t, 3> &&mesh) {
+  auto &gd = _name2geo[name];
   detail::_convert_mesh_to_vao(_glfun, mesh, gd.vao, gd.buffers, gd.draw_mode,
                                gd.count, gd.index_type);
+  gd.mesh = std::move(mesh);
 }
 
 namespace detail {
@@ -147,7 +170,7 @@ template <class E, size_t N>
 GLuint _convert_image_to_texture(opengl::glfunctions *glfun,
                                  const std::shared_ptr<image_<E, N>> &im_ptr) {
   if (!im_ptr) {
-    return 0;
+    return -1;
   }
   const auto &im = *im_ptr;
   GLuint texture = 0;
@@ -189,7 +212,7 @@ static constexpr int SHADOW_WIDTH = 1024;
 static constexpr int SHADOW_HEIGHT = 1024;
 static constexpr size_t MAX_NLIGHTS = 16;
 
-void scene::add(const std::string &name, const material &mat) {
+void scene::add_material(const std::string &name, const material &mat) {
   material_data mat_data;
 
   // the shading program
@@ -228,6 +251,10 @@ void scene::add(const std::string &name, const material &mat) {
       uniform vec3 light_position;
       uniform float far_plane;
 
+      bool IsSolid(vec3 frag_pos, vec2 tex_coord){
+        return true;
+      }
+
       void main(){
         // get distance between fragment and light source
         float light_distance = length(FragPos.xyz - light_position);
@@ -237,7 +264,6 @@ void scene::add(const std::string &name, const material &mat) {
     
         // Write this as modified depth
         gl_FragDepth = light_distance;
-        //gl_FragDepth = 1.0;
       } 
     )SHADER";
   GLuint program_shading = detail::_compile_shader_program(
@@ -265,7 +291,7 @@ void scene::add(const std::string &name, const material &mat) {
       layout(location = 1) in vec3 normal;
       layout(location = 2) in vec2 tex_coord;
 
-      out vec2 frag_tex_coord;
+      //out vec2 frag_tex_coord;
       out VS_OUT {
         vec3 frag_pos;
         vec3 normal;
@@ -281,7 +307,7 @@ void scene::add(const std::string &name, const material &mat) {
     )SHADER";
   constexpr char *fshader_rendering_src = R"SHADER(
       #version 330 core
-      #define MAX_NLIGHTS 8
+      #define MAX_NLIGHTS 16
       out vec4 FragColor;
       in VS_OUT {
         vec3 frag_pos;
@@ -299,12 +325,11 @@ void scene::add(const std::string &name, const material &mat) {
 
       uniform vec3 eye;
 
-      float ComputeShadow(vec3 frag_pos, int light_id){
+      float ComputeShadow(vec3 frag_pos, float bias, int light_id){
         vec3 frag_to_light = frag_pos - light_positions[light_id]; 
         float closest_depth = texture(depth_maps[light_id], frag_to_light).r;
         closest_depth *= far_planes[light_id];  
         float current_depth = length(frag_to_light);  
-        float bias = 0.05; 
         float shadow = current_depth -  bias > closest_depth ? 1.0 : 0.0; 
         return shadow;
       }
@@ -336,7 +361,8 @@ void scene::add(const std::string &name, const material &mat) {
           vec3 specular = spec * light_color;    
       
           // Calculate shadow
-          float shadow = ComputeShadow(fs_in.frag_pos, light_id);                      
+          float shadow = ComputeShadow(fs_in.frag_pos, 
+            max(0.05 * (1.0 - dot(normal, light_dir)), 0.005), light_id);                      
           vec3 lighting = (ambient + (1.0 - shadow) * (diffuse + specular)) * color; 
           lighting_sum = lighting_sum + lighting;
         }
@@ -390,8 +416,22 @@ void scene::add(const std::string &name, const material &mat) {
   _name2mat[name] = mat_data;
 }
 
+void scene::add_material(const std::string &name, const vec3f &diffuse_color) {
+  add_material(name, material{nullptr, nullptr, nullptr,
+                              std::make_shared<image3f32>(make_shape(1, 1),
+                                                          diffuse_color),
+                              nullptr});
+}
+
+void scene::add_material(const std::string &name, image3f32 &&diffuse_map) {
+  add_material(name,
+               material{nullptr, nullptr, nullptr,
+                        std::make_shared<image3f32>(std::move(diffuse_map)),
+                        nullptr});
+}
+
 static constexpr float FAR_PLANE = 50.0f;
-void scene::add(const point_light<float> &l) {
+void scene::add_light(const point_light<float> &l) {
   // gen the frame buffer
   GLuint fbo;
   _glfun->glGenFramebuffers(1, &fbo);
@@ -462,12 +502,13 @@ void scene::add(const point_light<float> &l) {
 
   light_data ld;
   ld.fbo_shadow = fbo;
-  ld.tex_shadow = shadow_map;
+  ld.tex_depth_map = shadow_map;
 
   int light_id = (int)_light_data_table.size();
-  assert(all_same(light_id, _light_data_table.size(), _depth_maps.size(),
-                  _light_positions.size(), _light_colors.size(),
-                  _far_planes.size(), _light_shadow_matrices.size()));
+  assert(all_same(light_id, _light_data_table.size(),
+                  _depth_map_uniform_values.size(), _light_positions.size(),
+                  _light_colors.size(), _far_planes.size(),
+                  _light_shadow_matrices.size()));
 
   _glfun->glActiveTexture(GL_TEXTURE0 +
                           underlying(opengl::texture_attribute::shadow_map_0) +
@@ -475,8 +516,8 @@ void scene::add(const point_light<float> &l) {
   _glfun->glBindTexture(GL_TEXTURE_CUBE_MAP, shadow_map);
   _glfun->glActiveTexture(GL_TEXTURE0);
 
-  _depth_maps.push_back(underlying(opengl::texture_attribute::shadow_map_0) +
-                        light_id);
+  _depth_map_uniform_values.push_back(
+      underlying(opengl::texture_attribute::shadow_map_0) + light_id);
 
   _light_positions.push_back(l.position);
   _light_colors.push_back(l.color);
@@ -505,36 +546,31 @@ void scene::add(const point_light<float> &l) {
   _light_data_table.push_back(ld);
 }
 
-void scene::add_object(const std::string &name, const std::string &geo_name,
-                       const std::string &mat_name) {
-  assert(_name2geo.find(geo_name) != _name2geo.end());
-  assert(_name2mat.find(mat_name) != _name2mat.end());
-  object_data od;
-  od.geo_name = geo_name;
-  od.mat_name = mat_name;
-  od.model_matrix = eye<float>(4, 4);
-  _name2obj[name] = od;
+box<vec3f> scene::get_bounding_box() const {
+  box<vec3f> bb;
+  for (auto &gd : _name2geo) {
+    bb |= bounding_box(gd.second.mesh);
+  }
+  return bb;
 }
 
-void scene::init(GLuint default_fbo) {
- 
-}
+void scene::init(GLuint default_fbo) {}
 
 void scene::render(GLuint default_fbo) const {
   _glfun->glEnable(GL_DEPTH_TEST);
   _glfun->glEnable(GL_CULL_FACE);
-  _glfun->glDisable(GL_MULTISAMPLE);
+  _glfun->glEnable(GL_MULTISAMPLE);
   _glfun->glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
   const size_t nlights = _light_data_table.size();
 
   // first pass
   _glfun->glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
-  for (int light_id = 0; light_id < nlights; light_id ++) {
+  for (int light_id = 0; light_id < nlights; light_id++) {
     auto &light = _light_data_table[light_id];
 
     _glfun->glBindFramebuffer(GL_FRAMEBUFFER, light.fbo_shadow);
-    _glfun->glBindTexture(GL_TEXTURE_CUBE_MAP, light.tex_shadow);
+    _glfun->glBindTexture(GL_TEXTURE_CUBE_MAP, light.tex_depth_map);
     _glfun->glClear(GL_DEPTH_BUFFER_BIT);
     assert(error());
 
@@ -587,7 +623,7 @@ void scene::render(GLuint default_fbo) const {
     _glfun->glUniform3fv(mat.second_pass.uniform_light_colors, nlights,
                          _light_colors[0].ptr());
     _glfun->glUniform1iv(mat.second_pass.uniform_depth_maps, nlights,
-                         _depth_maps.data());
+                         _depth_map_uniform_values.data());
     assert(error());
 
     // set textures

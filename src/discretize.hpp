@@ -1,5 +1,7 @@
 #pragma once
 
+#include "discretize_fwd.hpp"
+
 #include "render_mesh.hpp"
 
 namespace wheels {
@@ -12,6 +14,13 @@ void discretize(render_mesh<E, IndexT, 3> &mesh,
     mesh.emplace_vert(p.corners[i], p.normal);
   }
   mesh.add_polygon(iota<IndexT>(p.corners.numel()) + cur_nverts);
+}
+
+// disk
+template <class E, class IndexT>
+void discretize(render_mesh<E, IndexT, 3> &mesh,
+                const disk<vec_<E, 3>, E, vec_<E, 3>> &d) {
+  discretize(mesh, make_polygon(d, 32));
 }
 
 // box
@@ -78,5 +87,76 @@ void discretize(render_mesh<E, IndexT, 3> &mesh,
           vec_<IndexT, 3>(vids(i, j), vids(previ, prevj), vids(previ, j)));
     }
   }
+}
+
+// cone
+template <class E, class IndexT>
+void discretize(render_mesh<E, IndexT, 3> &mesh,
+                const cone<polygon<vec_<E, 3>, vec_<E, 3>>, vec_<E, 3>> &c) {
+  discretize(mesh, c.base_shape);
+  const auto &base_corners = c.base_shape.corners;
+  for (int i = 0; i < base_corners.numel(); i++) {
+    int next = (i + 1) % base_corners.numel();
+    discretize(mesh, make_polygon(vecx_<vec_<E, 3>>(
+                         {base_corners[next], base_corners[i], c.apex})));
+  }
+}
+
+// cylinder
+template <class E, class IndexT>
+void discretize(
+    render_mesh<E, IndexT, 3> &mesh,
+    const cylinder<polygon<vec_<E, 3>, vec_<E, 3>>, vec_<E, 3>> &c) {
+  discretize(mesh, c.base_shape);
+  polygon<vec_<E, 3>> top_shape = c.base_shape;
+  top_shape.normal = -top_shape.normal;
+  for (auto &p : top_shape.corners) {
+    p += c.offset;
+  }
+  const auto &base_corners = c.base_shape.corners;
+  const auto &top_corners = top_shape.corners;
+  for (int i = 0; i < base_corners.numel(); i++) {
+    int next = (i + 1) % base_corners.numel();
+    discretize(mesh, make_polygon(vecx_<vec_<E, 3>>(
+                         {base_corners[next], base_corners[i], top_corners[i],
+                          top_corners[next]})));
+  }
+  std::reverse(top_shape.corners.begin(), top_shape.corners.end());
+  discretize(mesh, top_shape);
+}
+template <class E, class IndexT>
+void discretize(render_mesh<E, IndexT, 3> &mesh,
+  const cylinder<disk<vec_<E, 3>, E, vec_<E, 3>>, vec_<E, 3>> &cld) {
+  // base shape
+  auto base_shape = make_polygon(cld.base_shape, 32);
+  // add the bottom face
+  discretize(mesh, base_shape);
+  // top shape
+  polygon<vec_<E, 3>> top_shape = base_shape;
+  top_shape.normal = -top_shape.normal;
+  for (auto &p : top_shape.corners) {
+    p += cld.offset;
+  }
+  // add the side faces
+  IndexT base_vert_start = mesh.verts().numel();
+  for (int i = 0; i < base_shape.corners.numel(); i++) {
+    auto &c = base_shape.corners[i];
+    mesh.emplace_vert(c, (c - cld.base_shape.center).normalized());
+  }
+  IndexT top_vert_start = mesh.verts().numel();
+  for (int i = 0; i < top_shape.corners.numel(); i++) {
+    auto &c = top_shape.corners[i];
+    mesh.emplace_vert(c,
+                      (c - (cld.base_shape.center + cld.offset)).normalized());
+  }
+  for (int i = 0; i < base_shape.corners.numel(); i++) {
+    int next = (i + 1) % base_shape.corners.numel();
+    mesh.add_polygon(vec_<IndexT, 4>(base_vert_start + next,
+                                     base_vert_start + i, top_vert_start + i,
+                                     top_vert_start + next));
+  }
+  // add the top face
+  std::reverse(top_shape.corners.begin(), top_shape.corners.end());
+  discretize(mesh, top_shape);
 }
 }

@@ -21,6 +21,14 @@ public:
   auto verts() const { return proxy(_verts); }
   auto indices() const { return proxy(_indices); }
 
+  vec_<E, 3> center() const {
+    vec_<E, 3> c;
+    for (auto &v : _verts) {
+      c += v.position;
+    }
+    return c / E(_verts.size());
+  }
+
   template <class FunT> void for_each_vert(FunT fun) {
     std::for_each(_verts.begin(), _verts.end(), fun);
   }

@@ -13,9 +13,15 @@ protected:
   virtual void resizeGL(int w, int h) override;
   virtual void paintGL() override;
 
+  virtual void mousePressEvent(QMouseEvent *e) override;
+  virtual void mouseMoveEvent(QMouseEvent *e) override;
+  virtual void mouseReleaseEvent(QMouseEvent *e) override;
+  virtual void wheelEvent(QWheelEvent *e) override;
+
 private:
-  scene _scene;
+  std::unique_ptr<scene> _scene;
   std::function<void(scene &s)> _init_fun;
+  QPointF _last_pos;
 };
 }
 }
