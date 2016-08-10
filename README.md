@@ -1,6 +1,7 @@
 # Wheels.UI
 
 The UI module for 3D visualization in wheels.
+[WheelsPlatform](https://github.com/YANG-H/WheelsPlatform) is required for building this project.
 
 ## Features 
 1. Multiple lights shadowing;
