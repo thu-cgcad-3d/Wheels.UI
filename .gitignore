@@ -29,3 +29,5 @@
 *.app
 
 _backup
+
+.vscode
