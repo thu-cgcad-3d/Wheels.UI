@@ -9,6 +9,9 @@ int main(int argc, char *argv[]) {
 
   // writing to session.configData() here sets defaults
   // this is the preferred way to set them
+  session.configData().showDurations = Catch::ShowDurations::Always;
+  session.configData().testsOrTags = {"[scene]", "[lights]"};
+  
 
   int returnCode = session.applyCommandLine(argc, argv);
   if (returnCode != 0) // Indicates a command line error

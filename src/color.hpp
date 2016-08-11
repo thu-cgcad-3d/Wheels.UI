@@ -26,7 +26,7 @@ static constexpr vec3f orange(1, 165.0 / 255.0, 0);
 // convert hsv color to rgb color
 vec3f hsv(float h, float s, float v);
 
-// generate a pseudo color from a scalar
+// generate a pseudo color from a scalar following MATLAB's Jet palette
 vec3f jet(float lambda);
 }
 }

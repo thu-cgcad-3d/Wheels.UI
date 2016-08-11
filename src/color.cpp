@@ -5,12 +5,12 @@ namespace color {
 vec3f hsv(float h, float s, float v) {
   int i;
   float f, p, q, t;
-  if (s == 0.0) {
+  if (s == 0.0f) {
     // achromatic (grey)
     return vec3f(v, v, v);
   }
   h *= 6.0f; // sector 0 to 5
-  i = std::floor(h);
+  i = (int)std::floor(h);
   f = h - i; // factorial part of h
   p = v * (1 - s);
   q = v * (1 - s * f);
@@ -36,20 +36,20 @@ float _jet_interpolate(float val, float y0, float x0, float y1, float x1) {
   return (val - x0) * (y1 - y0) / (x1 - x0) + y0;
 }
 float _jet_base(float val) {
-  if (val <= -0.75)
-    return 0;
-  else if (val <= -0.25)
-    return _jet_interpolate(val, 0.0, -0.75, 1.0, -0.25);
-  else if (val <= 0.25)
-    return 1.0;
-  else if (val <= 0.75)
-    return _jet_interpolate(val, 1.0, 0.25, 0.0, 0.75);
+  if (val <= -0.75f)
+    return 0.0f;
+  else if (val <= -0.25f)
+    return _jet_interpolate(val, 0.0f, -0.75f, 1.0f, -0.25f);
+  else if (val <= 0.25f)
+    return 1.0f;
+  else if (val <= 0.75f)
+    return _jet_interpolate(val, 1.0f, 0.25f, 0.0f, 0.75f);
   else
-    return 0.0;
+    return 0.0f;
 }
-float _jet_red(float gray) { return _jet_base(gray - 0.5); }
+float _jet_red(float gray) { return _jet_base(gray - 0.5f); }
 float _jet_green(float gray) { return _jet_base(gray); }
-float _jet_blue(float gray) { return _jet_base(gray + 0.5); }
+float _jet_blue(float gray) { return _jet_base(gray + 0.5f); }
 }
 vec3f jet(float lambda) {
   return vec3f(detail::_jet_red(lambda), detail::_jet_green(lambda),

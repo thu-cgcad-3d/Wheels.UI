@@ -7,7 +7,7 @@
 namespace wheels {
 scene::scene()
     : _glfun(nullptr), _camera(vec3f(0, 0, 15), vec3f(0, 0, 0), vec3f(0, 1, 0),
-                               500, 500, 500, vec2f(250, 250), 0.001, 1e4) {}
+                               500, 500, 500, vec2f(250, 250), 0.001f, 1e4f) {}
 scene::~scene() {
   if (!_glfun) {
     return;
@@ -90,7 +90,7 @@ void _convert_mesh_to_vao(opengl::glfunctions *glfun,
     static_assert(N == 1 || N == 2 || N == 3, "");
   }
 
-  count = mesh.indices().numel() * N;
+  count = (GLsizei)mesh.indices().numel() * N;
   index_type = opengl::data_type<IndexT>::value;
   assert(index_type == GL_UNSIGNED_BYTE || index_type == GL_UNSIGNED_SHORT ||
          index_type == GL_UNSIGNED_INT);
@@ -117,7 +117,7 @@ namespace detail {
 GLuint _compile_shader(opengl::glfunctions *glfun, const char *src,
                        GLenum type) {
   GLuint s = glfun->glCreateShader(type);
-  GLint len = strlen(src);
+  GLint len = (GLint)strlen(src);
   glfun->glShaderSource(s, 1, &src, &len);
   glfun->glCompileShader(s);
   GLint is_compiled = 0;
@@ -210,7 +210,6 @@ GLuint _convert_image_to_texture(opengl::glfunctions *glfun,
 
 static constexpr int SHADOW_WIDTH = 1024;
 static constexpr int SHADOW_HEIGHT = 1024;
-static constexpr size_t MAX_NLIGHTS = 16;
 
 void scene::add_material(const std::string &name, const material &mat) {
   material_data mat_data;
@@ -219,7 +218,10 @@ void scene::add_material(const std::string &name, const material &mat) {
   const char *vshader_shading_src = R"SHADER(
       #version 330 core
       layout (location = 0) in vec3 position;
+      //layout (location = 2) in vec2 tex_coord;      
+
       uniform mat4 model_matrix;
+
       void main(){
         gl_Position = model_matrix * vec4(position, 1.0);
       }  
@@ -291,7 +293,6 @@ void scene::add_material(const std::string &name, const material &mat) {
       layout(location = 1) in vec3 normal;
       layout(location = 2) in vec2 tex_coord;
 
-      //out vec2 frag_tex_coord;
       out VS_OUT {
         vec3 frag_pos;
         vec3 normal;
@@ -316,6 +317,7 @@ void scene::add_material(const std::string &name, const material &mat) {
       } fs_in;
 
       uniform sampler2D tex_diffuse;
+      
     
       uniform uint nlights;
       uniform samplerCube depth_maps[MAX_NLIGHTS];
@@ -525,8 +527,8 @@ void scene::add_light(const point_light<float> &l) {
 
   // compute shadow matrices
   const mat4f shadow_projection_matrix = perspective<float>(
-      numeric::PI / 2.0, (float)SHADOW_WIDTH / (float)(SHADOW_HEIGHT), 1.0f,
-      FAR_PLANE);
+      numeric_<float>::PI / 2.0f, (float)SHADOW_WIDTH / (float)(SHADOW_HEIGHT),
+      1.0f, FAR_PLANE);
   _light_shadow_matrices.push_back(vec_<mat4f, 6>(
       shadow_projection_matrix *
           look_at(l.position, l.position + vec3f(1, 0, 0), vec3f(0, -1, 0)),
@@ -615,14 +617,14 @@ void scene::render(GLuint default_fbo) const {
     _glfun->glUniform3fv(mat.second_pass.uniform_eye, 1, _camera.eye.ptr());
 
     // light related uniforms
-    _glfun->glUniform1ui(mat.second_pass.uniform_nlights, nlights);
-    _glfun->glUniform1fv(mat.second_pass.uniform_far_planes, nlights,
+    _glfun->glUniform1ui(mat.second_pass.uniform_nlights, (GLuint)nlights);
+    _glfun->glUniform1fv(mat.second_pass.uniform_far_planes, (GLuint)nlights,
                          _far_planes.data());
-    _glfun->glUniform3fv(mat.second_pass.uniform_light_positions, nlights,
-                         _light_positions[0].ptr());
-    _glfun->glUniform3fv(mat.second_pass.uniform_light_colors, nlights,
+    _glfun->glUniform3fv(mat.second_pass.uniform_light_positions,
+                         (GLuint)nlights, _light_positions[0].ptr());
+    _glfun->glUniform3fv(mat.second_pass.uniform_light_colors, (GLuint)nlights,
                          _light_colors[0].ptr());
-    _glfun->glUniform1iv(mat.second_pass.uniform_depth_maps, nlights,
+    _glfun->glUniform1iv(mat.second_pass.uniform_depth_maps, (GLuint)nlights,
                          _depth_map_uniform_values.data());
     assert(error());
 

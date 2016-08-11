@@ -4,6 +4,8 @@
 
 namespace wheels {
 namespace qt {
+void show(std::function<void(scene &s)> f);
+
 class SceneWidget : public QOpenGLWidget {
 public:
   explicit SceneWidget(std::function<void(scene &s)> f);
