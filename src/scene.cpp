@@ -6,8 +6,9 @@
 
 namespace wheels {
 scene::scene()
-    : _glfun(nullptr), _camera(vec3f(0, 0, 15), vec3f(0, 0, 0), vec3f(0, 1, 0),
-                               500, 500, 500, vec2f(250, 250), 0.001f, 1e4f) {}
+    : _glfun(nullptr), _camera(vec3f(5, 5, 4), vec3f(0, 0, 0), vec3f(0, 0, 1),
+                               500, 500, 500, vec2f(250, 250), 0.001f, 1e4f),
+      _background(0.1f, 0.1f, 0.1f) {}
 scene::~scene() {
   if (!_glfun) {
     return;
@@ -168,11 +169,7 @@ GLuint _compile_shader_program(opengl::glfunctions *glfun, const char *vs,
 // _convert_image_to_texture
 template <class E, size_t N>
 GLuint _convert_image_to_texture(opengl::glfunctions *glfun,
-                                 const std::shared_ptr<image_<E, N>> &im_ptr) {
-  if (!im_ptr) {
-    return -1;
-  }
-  const auto &im = *im_ptr;
+                                 const image_<E, N> &im) {
   GLuint texture = 0;
   glfun->glGenTextures(1, &texture);
   glfun->glBindTexture(GL_TEXTURE_2D, texture);
@@ -306,7 +303,7 @@ void scene::add_material(const std::string &name, const material &mat) {
         vs_out.tex_coord = tex_coord;
       }
     )SHADER";
-  constexpr char *fshader_rendering_src = R"SHADER(
+  const std::string fshader_rendering_src = R"SHADER(
       #version 330 core
       #define MAX_NLIGHTS 16
       out vec4 FragColor;
@@ -316,8 +313,15 @@ void scene::add_material(const std::string &name, const material &mat) {
         vec2 tex_coord;
       } fs_in;
 
-      uniform sampler2D tex_diffuse;
-      
+      struct optional_sampler2D {
+        bool exists;
+        sampler2D tex;
+      };
+      uniform optional_sampler2D tex_normal;
+      uniform optional_sampler2D tex_ambient;
+      uniform optional_sampler2D tex_diffuse;
+      uniform optional_sampler2D tex_specular;
+      uniform optional_sampler2D tex_alpha;      
     
       uniform uint nlights;
       uniform samplerCube depth_maps[MAX_NLIGHTS];
@@ -327,52 +331,30 @@ void scene::add_material(const std::string &name, const material &mat) {
 
       uniform vec3 eye;
 
-      float ComputeShadow(vec3 frag_pos, float bias, int light_id){
-        vec3 frag_to_light = frag_pos - light_positions[light_id]; 
+      float ComputeShadow(int light_id){
+        vec3 light_dir = normalize(light_positions[light_id] - fs_in.frag_pos);
+        float bias = max(0.05 * (1.0 - dot(normalize(fs_in.normal), light_dir)), 0.005);
+        vec3 frag_to_light = fs_in.frag_pos - light_positions[light_id]; 
         float closest_depth = texture(depth_maps[light_id], frag_to_light).r;
         closest_depth *= far_planes[light_id];  
         float current_depth = length(frag_to_light);  
         float shadow = current_depth -  bias > closest_depth ? 1.0 : 0.0; 
         return shadow;
       }
+            
+      vec4 ComputeColor(int valid_lights_num, 
+        vec3 frag_pos, vec3 normal, vec2 tex_coord);
 
       void main(){
-        vec3 color = texture(tex_diffuse, fs_in.tex_coord).rgb;
-        vec3 normal = normalize(fs_in.normal);
-        
-        vec3 lighting_sum = vec3(0.0);
-        int niter = min(int(nlights), MAX_NLIGHTS);
-
-        for(int light_id = 0; light_id < niter; ++light_id){
-          vec3 light_color = light_colors[light_id];
-      
-          // Ambient
-          vec3 ambient = 0.3 * color;
-      
-          // Diffuse
-          vec3 light_dir = normalize(light_positions[light_id] - fs_in.frag_pos);
-          float diff = max(dot(light_dir, normal), 0.0);
-          vec3 diffuse = diff * light_color;
-      
-          // Specular
-          vec3 view_dir = normalize(eye - fs_in.frag_pos);
-          vec3 reflect_dir = reflect(-light_dir, normal);
-          float spec = 0.0;
-          vec3 halfway_dir = normalize(light_dir + view_dir);  
-          spec = pow(max(dot(normal, halfway_dir), 0.0), 10.0);
-          vec3 specular = spec * light_color;    
-      
-          // Calculate shadow
-          float shadow = ComputeShadow(fs_in.frag_pos, 
-            max(0.05 * (1.0 - dot(normal, light_dir)), 0.005), light_id);                      
-          vec3 lighting = (ambient + (1.0 - shadow) * (diffuse + specular)) * color; 
-          lighting_sum = lighting_sum + lighting;
-        }
-        FragColor = vec4(lighting_sum / float(niter), 1.0);
+        FragColor = ComputeColor(min(int(nlights), MAX_NLIGHTS), 
+          fs_in.frag_pos, normalize(fs_in.normal), fs_in.tex_coord);
       }    
     )SHADER";
-  GLuint program_rendering = detail::_compile_shader_program(
-      _glfun, vshader_rendering_src, nullptr, fshader_rendering_src);
+  std::string combined_fshader_rendering_src =
+      fshader_rendering_src + mat.compute_color_function;
+  GLuint program_rendering =
+      detail::_compile_shader_program(_glfun, vshader_rendering_src, nullptr,
+                                      combined_fshader_rendering_src.c_str());
   assert(error());
 
   mat_data.second_pass.program = program_rendering;
@@ -383,8 +365,6 @@ void scene::add_material(const std::string &name, const material &mat) {
       _glfun->glGetUniformLocation(mat_data.second_pass.program, "proj_matrix");
   mat_data.second_pass.uniform_model_matrix = _glfun->glGetUniformLocation(
       mat_data.second_pass.program, "model_matrix");
-  mat_data.second_pass.uniform_tex_diffuse =
-      _glfun->glGetUniformLocation(mat_data.second_pass.program, "tex_diffuse");
   mat_data.second_pass.uniform_eye =
       _glfun->glGetUniformLocation(mat_data.second_pass.program, "eye");
 
@@ -400,36 +380,46 @@ void scene::add_material(const std::string &name, const material &mat) {
   mat_data.second_pass.uniform_nlights =
       _glfun->glGetUniformLocation(mat_data.second_pass.program, "nlights");
 
-  assert(error());
+  // tex related uniforms
+  const std::string std_texture_attribute_names[] = {
+      "normal", "ambient", "diffuse", "specular", "alpha",
+  };
+  _glfun->glUseProgram(mat_data.second_pass.program);
+  for_each(make_const_sequence(
+               const_int<underlying(opengl::texture_attribute::std_tex_num)>()),
+           [&](auto id) {
+             constexpr int i = decltype(id)::value;
+             constexpr const_ints<opengl::texture_attribute,
+                                  opengl::texture_attribute(i)>
+                 attribute;
+             
+             const std::string exists_name =
+                 "tex_" + std_texture_attribute_names[i] + ".exists";
+             const std::string tex_name =
+                 "tex_" + std_texture_attribute_names[i] + ".tex";
+             GLint uniform_exists = _glfun->glGetUniformLocation(
+                 mat_data.second_pass.program, exists_name.c_str());
+             GLint uniform_tex = _glfun->glGetUniformLocation(
+                 mat_data.second_pass.program, tex_name.c_str());
 
-  // load textures
-  mat_data.tex[underlying(opengl::texture_attribute::normal)] =
-      detail::_convert_image_to_texture(_glfun, mat.normal_map);
-  mat_data.tex[underlying(opengl::texture_attribute::alpha)] =
-      detail::_convert_image_to_texture(_glfun, mat.alpha_map);
-  mat_data.tex[underlying(opengl::texture_attribute::ambient)] =
-      detail::_convert_image_to_texture(_glfun, mat.ambient_map);
-  mat_data.tex[underlying(opengl::texture_attribute::diffuse)] =
-      detail::_convert_image_to_texture(_glfun, mat.diffuse_map);
-  mat_data.tex[underlying(opengl::texture_attribute::specular)] =
-      detail::_convert_image_to_texture(_glfun, mat.specular_map);
-  assert(error());
-
+             mat_data.tex[i] = (GLuint)-1;
+             if (uniform_exists != -1 &&
+                 uniform_tex != -1) { // the uniform is active
+               bool has_tex = mat.texture(attribute) != nullptr;
+               _glfun->glUniform1i(uniform_exists, has_tex);
+               assert(error());
+               _glfun->glUniform1i(uniform_tex, i);
+               assert(error());
+               if (has_tex) {
+                 mat_data.tex[i] = detail::_convert_image_to_texture(
+                     _glfun, *mat.texture(attribute));
+                 assert(error());
+               }
+             }
+             assert(error());
+           });
+  _glfun->glUseProgram(0);
   _name2mat[name] = mat_data;
-}
-
-void scene::add_material(const std::string &name, const vec3f &diffuse_color) {
-  add_material(name, material{nullptr, nullptr, nullptr,
-                              std::make_shared<image3f32>(make_shape(1, 1),
-                                                          diffuse_color),
-                              nullptr});
-}
-
-void scene::add_material(const std::string &name, image3f32 &&diffuse_map) {
-  add_material(name,
-               material{nullptr, nullptr, nullptr,
-                        std::make_shared<image3f32>(std::move(diffuse_map)),
-                        nullptr});
 }
 
 static constexpr float FAR_PLANE = 50.0f;
@@ -562,7 +552,7 @@ void scene::render(GLuint default_fbo) const {
   _glfun->glEnable(GL_DEPTH_TEST);
   _glfun->glEnable(GL_CULL_FACE);
   _glfun->glEnable(GL_MULTISAMPLE);
-  _glfun->glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+  _glfun->glClearColor(_background.r(), _background.g(), _background.b(), 1.0f);
 
   const size_t nlights = _light_data_table.size();
 
@@ -626,16 +616,17 @@ void scene::render(GLuint default_fbo) const {
                          _light_colors[0].ptr());
     _glfun->glUniform1iv(mat.second_pass.uniform_depth_maps, (GLuint)nlights,
                          _depth_map_uniform_values.data());
+
+    // texture related uniforms
+    for (int i = 0; i < underlying(opengl::texture_attribute::std_tex_num);
+         i++) {
+      if (mat.tex[i] != -1) {
+        _glfun->glActiveTexture(GL_TEXTURE0 + i);
+        _glfun->glBindTexture(GL_TEXTURE_2D, mat.tex[i]);
+        _glfun->glActiveTexture(GL_TEXTURE0);
+      }
+    }
     assert(error());
-
-    // set textures
-    _glfun->glActiveTexture(GL_TEXTURE0 +
-                            underlying(opengl::texture_attribute::diffuse));
-    _glfun->glBindTexture(
-        GL_TEXTURE_2D, mat.tex[underlying(opengl::texture_attribute::diffuse)]);
-    _glfun->glUniform1i(mat.second_pass.uniform_tex_diffuse,
-                        underlying(opengl::texture_attribute::diffuse));
-
     _glfun->glBindVertexArray(geo.vao);
     _glfun->glDrawElements(geo.draw_mode, geo.count, geo.index_type, nullptr);
     assert(error());

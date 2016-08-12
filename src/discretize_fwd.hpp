@@ -11,6 +11,12 @@ template <class BaseShapeT, class PointT> class cone;
 template <class BaseShapeT, class OffsetT> class cylinder;
 
 template <class E, class IndexT, size_t IndexSize> class render_mesh;
+
+// render_mesh
+template <class E, class IndexT>
+void discretize(render_mesh<E, IndexT, 3> &mesh,
+                const render_mesh<E, IndexT, 3> &mesh2);
+
 // polygon
 template <class E, class IndexT>
 void discretize(render_mesh<E, IndexT, 3> &mesh,

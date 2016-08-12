@@ -5,6 +5,19 @@
 #include "render_mesh.hpp"
 
 namespace wheels {
+// render_mesh
+template <class E, class IndexT>
+void discretize(render_mesh<E, IndexT, 3> &mesh,
+                const render_mesh<E, IndexT, 3> &mesh2) {
+  IndexT cur_nverts = mesh.verts().numel();
+  for (auto &&v : mesh2.verts()) {
+    mesh.add_vert(v);
+  }
+  for (auto &&inds : mesh2.indices()) {
+    mesh.add_indices(inds + cur_nverts);
+  }
+}
+
 // polygon
 template <class E, class IndexT>
 void discretize(render_mesh<E, IndexT, 3> &mesh,

@@ -65,8 +65,6 @@ public:
 
   // add_material
   void add_material(const std::string &name, const material &mat);
-  void add_material(const std::string &name, const vec3f &diffuse_color);
-  void add_material(const std::string &name, image3f32 &&diffuse_map);
 
   // add_light
   void add_light(const point_light<float> &l);
@@ -85,9 +83,10 @@ public:
     _name2obj[name] = od;
   }
 
-  void set_camera(const perspective_camera<float> &c) { _camera = c; }
   const auto &camera() const { return _camera; }
   auto &camera() { return _camera; }
+  const vec3f &background() const { return _background; }
+  vec3f &background() { return _background; }
 
   box<vec3f> get_bounding_box() const;
 
@@ -100,6 +99,7 @@ private:
   friend class qt::SceneWidget;
   opengl::glfunctions *_glfun;
   perspective_camera<float> _camera;
+  vec3f _background;
 
   // geometry
   struct geometry_data {
@@ -124,7 +124,6 @@ private:
     struct {
       GLuint program;
       GLint uniform_view_matrix, uniform_proj_matrix, uniform_model_matrix;
-      GLint uniform_tex_diffuse;
       GLint uniform_eye;
       GLint uniform_depth_maps;
       GLint uniform_light_positions;
