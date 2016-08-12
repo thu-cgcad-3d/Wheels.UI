@@ -42,4 +42,18 @@ make_point_light(const tensor_base<E, tensor_shape<S1, N1>, T1> &position,
                  E far_plane = 20.0f) {
   return point_light<E>{position, color, far_plane};
 }
+
+template <class E> class parallel_light {
+public:
+  vec_<E, 3> direction;
+  E far_plane;
+};
+
+template <class E> class cone_light {
+public:
+  vec_<E, 3> position;
+  vec_<E, 3> direction;
+  E angle;
+  E far_plane;
+};
 }

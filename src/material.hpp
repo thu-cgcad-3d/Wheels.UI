@@ -40,33 +40,29 @@ public:
   std::shared_ptr<image3f32> specular_map;
   std::shared_ptr<image1f32> alpha_map;
 
-  auto texture(const_ints<opengl::texture_attribute,
-                          opengl::texture_attribute::normal>) const {
-    return normal_map;
-  }
-  auto texture(const_ints<opengl::texture_attribute,
-                          opengl::texture_attribute::ambient>) const {
-    return ambient_map;
-  }
-  auto texture(const_ints<opengl::texture_attribute,
-                          opengl::texture_attribute::diffuse>) const {
-    return diffuse_map;
-  }
-  auto texture(const_ints<opengl::texture_attribute,
-                          opengl::texture_attribute::specular>) const {
-    return specular_map;
-  }
-  auto texture(const_ints<opengl::texture_attribute,
-                          opengl::texture_attribute::alpha>) const {
-    return alpha_map;
-  }
+public:
+  std::shared_ptr<image3f32> texture(
+      const_ints<opengl::texture_attribute, opengl::texture_attribute::normal>)
+      const;
+  std::shared_ptr<image3f32> texture(
+      const_ints<opengl::texture_attribute, opengl::texture_attribute::ambient>)
+      const;
+  std::shared_ptr<image3f32> texture(
+      const_ints<opengl::texture_attribute, opengl::texture_attribute::diffuse>)
+      const;
+  std::shared_ptr<image3f32>
+      texture(const_ints<opengl::texture_attribute,
+                         opengl::texture_attribute::specular>) const;
+  std::shared_ptr<image1f32> texture(
+      const_ints<opengl::texture_attribute, opengl::texture_attribute::alpha>)
+      const;
 };
 
 // make_pure_material
 material make_pure_material(const vec3f &color);
-material make_pure_material(image3f32 && diffuse_map);
+material make_pure_material(image3f32 &&diffuse_map);
 
 // make_simple_material
 material make_simple_material(const vec3f &color);
-material make_simple_material(image3f32 && diffuse_map);
+material make_simple_material(image3f32 &&diffuse_map);
 }
