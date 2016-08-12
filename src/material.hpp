@@ -62,6 +62,10 @@ public:
   }
 };
 
+// make_pure_material
+material make_pure_material(const vec3f &color);
+material make_pure_material(image3f32 && diffuse_map);
+
 // make_simple_material
 material make_simple_material(const vec3f &color);
 material make_simple_material(image3f32 && diffuse_map);

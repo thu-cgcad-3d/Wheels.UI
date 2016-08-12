@@ -71,10 +71,8 @@ void discretize(render_mesh<E, IndexT, 3> &mesh, const box<vec_<E, 3>> &b) {
 
 // sphere
 template <class E, class IndexT>
-void discretize(render_mesh<E, IndexT, 3> &mesh,
-                const sphere<vec_<E, 3>, E> &s) {
-  const int m = 128;
-  const int n = 64;
+void discretize(render_mesh<E, IndexT, 3> &mesh, const sphere<vec_<E, 3>, E> &s,
+                int m, int n) {
   IndexT cur_nverts = (IndexT)mesh.verts().numel();
   for (int i = 0; i < m; i++) {
     for (int j = 0; j < n; j++) {

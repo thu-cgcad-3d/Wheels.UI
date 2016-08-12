@@ -31,13 +31,15 @@ template <class E> class point_light {
 public:
   vec_<E, 3> position;
   vec_<E, 3> color;
+  E far_plane;
 };
 
 // make_point_light
 template <class E, class S1, class N1, class T1, class S2, class N2, class T2>
 constexpr auto
 make_point_light(const tensor_base<E, tensor_shape<S1, N1>, T1> &position,
-                 const tensor_base<E, tensor_shape<S2, N2>, T2> &color) {
-  return point_light<E>{position, color};
+                 const tensor_base<E, tensor_shape<S2, N2>, T2> &color,
+                 E far_plane = 20.0f) {
+  return point_light<E>{position, color, far_plane};
 }
 }

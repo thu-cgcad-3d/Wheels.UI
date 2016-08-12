@@ -205,8 +205,8 @@ GLuint _convert_image_to_texture(opengl::glfunctions *glfun,
 }
 }
 
-static constexpr int SHADOW_WIDTH = 1024;
-static constexpr int SHADOW_HEIGHT = 1024;
+static constexpr int SHADOW_WIDTH = 2048;
+static constexpr int SHADOW_HEIGHT = 2048;
 
 void scene::add_material(const std::string &name, const material &mat) {
   material_data mat_data;
@@ -338,8 +338,29 @@ void scene::add_material(const std::string &name, const material &mat) {
         float closest_depth = texture(depth_maps[light_id], frag_to_light).r;
         closest_depth *= far_planes[light_id];  
         float current_depth = length(frag_to_light);  
+        if(current_depth > far_planes[light_id]){
+          return 0.0f;
+        }
         float shadow = current_depth -  bias > closest_depth ? 1.0 : 0.0; 
         return shadow;
+      }
+
+      float ComputeShadowPCF(int light_id, int n){        
+        vec2 step = vec2(1.0 / 100.0f);
+        float shadow = 0.0f;
+        for(int x = -n; x <= n; x++){
+          for(int y = -n; y <= n; y++){
+            vec3 pos = vec3(fs_in.frag_pos.xy + step * vec2(x, y), fs_in.frag_pos.z);
+            vec3 light_dir = normalize(light_positions[light_id] - pos);
+            float bias = max(0.05 * (1.0 - dot(normalize(fs_in.normal), light_dir)), 0.005);
+            vec3 frag_to_light = pos - light_positions[light_id]; 
+            float closest_depth = texture(depth_maps[light_id], frag_to_light).r;
+            closest_depth *= far_planes[light_id];  
+            float current_depth = length(frag_to_light);  
+            shadow += (current_depth -  bias > closest_depth ? 1.0 : 0.0);
+          }
+        }
+        return shadow / float(2 * n + 1) / float(2 * n + 1);
       }
             
       vec4 ComputeColor(int valid_lights_num, 
@@ -422,7 +443,6 @@ void scene::add_material(const std::string &name, const material &mat) {
   _name2mat[name] = mat_data;
 }
 
-static constexpr float FAR_PLANE = 50.0f;
 void scene::add_light(const point_light<float> &l) {
   // gen the frame buffer
   GLuint fbo;
@@ -513,12 +533,12 @@ void scene::add_light(const point_light<float> &l) {
 
   _light_positions.push_back(l.position);
   _light_colors.push_back(l.color);
-  _far_planes.push_back(FAR_PLANE);
+  _far_planes.push_back(l.far_plane);
 
   // compute shadow matrices
   const mat4f shadow_projection_matrix = perspective<float>(
       numeric_<float>::PI / 2.0f, (float)SHADOW_WIDTH / (float)(SHADOW_HEIGHT),
-      1.0f, FAR_PLANE);
+      1.0f, l.far_plane);
   _light_shadow_matrices.push_back(vec_<mat4f, 6>(
       shadow_projection_matrix *
           look_at(l.position, l.position + vec3f(1, 0, 0), vec3f(0, -1, 0)),

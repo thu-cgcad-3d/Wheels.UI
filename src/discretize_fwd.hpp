@@ -33,8 +33,8 @@ void discretize(render_mesh<E, IndexT, 3> &mesh, const box<vec_<E, 3>> &b);
 
 // sphere
 template <class E, class IndexT>
-void discretize(render_mesh<E, IndexT, 3> &mesh,
-                const sphere<vec_<E, 3>, E> &s);
+void discretize(render_mesh<E, IndexT, 3> &mesh, const sphere<vec_<E, 3>, E> &s,
+                int m = 64, int n = 32);
 
 // cone
 template <class E, class IndexT>

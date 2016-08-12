@@ -10,9 +10,9 @@ TEST_CASE("scene multiple lights", "[scene][lights]") {
   cam.to_space(vec2(0, 1));
 
   qt::show([](scene &s) {
-    s.add_light(point_light<float>{vec3f(3, 5, 8), color::white});
-    s.add_light(point_light<float>{vec3f(-7, -5, 4), color::orange});
-    s.add_light(point_light<float>{vec3f(0, 0, -5), color::white});
+    s.add_light(point_light<float>{vec3f(3, 5, 8), color::white, 50.0f});
+    s.add_light(point_light<float>{vec3f(-7, -5, 4), color::orange, 50.0f});
+    s.add_light(point_light<float>{vec3f(0, 0, -5), color::white, 50.0f});
 
     s.add_material("white", make_simple_material(color::white));
     s.add_material("light gray", make_simple_material(color::light_gray));
